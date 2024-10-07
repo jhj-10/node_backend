@@ -15,10 +15,20 @@ app.use(express.json());
 // app.use(cors());
 const allowedOrigin =
   "https://web-schedule-manager-m1u0hx1t4ea25b62.sel4.cloudtype.app";
+
 app.use(
   cors({
     origin: allowedOrigin, // 클라이언트의 도메인을 명시적으로 설정
     credentials: true, // 자격 증명을 허용
+  })
+);
+
+// CORS 프리플라이트 요청 처리
+app.options(
+  "*",
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
   })
 );
 
