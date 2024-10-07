@@ -6,7 +6,7 @@ const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8080;
 
 const app = express();
 app.use(bodyParser.json());
@@ -79,11 +79,11 @@ app.post("/api/login", async (req, res) => {
 
 // Get users
 app.get("/api/users", async (req, res) => {
+  console.log("getusers: ", search, userId);
   const search = req.query.search ? req.query.search.toLowerCase() : "";
   const userId = req.query.userId ? req.query.userId.toLowerCase() : "";
   const auth = req.query.auth ? req.query.auth.toLowerCase() : "";
 
-  console.log("getusers: ", search, userId);
   let conn;
 
   try {
