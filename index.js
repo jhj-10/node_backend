@@ -32,6 +32,7 @@ app.options(
   })
 );
 
+// 프리플라이트 요청의 헤더 처리
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", allowedOrigin);
   res.header("Access-Control-Allow-Credentials", "true");
