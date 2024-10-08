@@ -5,6 +5,7 @@ const cors = require("cors");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
+require("dotenv").config();
 
 const port = 3000;
 
@@ -593,8 +594,8 @@ app.delete("/api/manpower-status/:projectId", async (req, res) => {
 });
 
 // send email
-const GMAIL_ID = process.env.GMAIL_ID;
-const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // 지메일 보안 > 앱 비밀번호 16자리
+const gmail_id = process.env.REACT_APP_GMAIL_ID;
+const gmail_app_password = process.env.REACT_APP_GMAIL_APP_PASSWORD; // 지메일 보안 > 앱 비밀번호 16자리
 
 // html 파일에서 name, email, password 변경
 function getEmailTemplate(name, email, password) {
@@ -616,13 +617,14 @@ app.post("/api/send-email", async (req, res) => {
 
   // Configure your SMTP transport
   let transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com", // Gmail SMTP 서버
+    port: 465, // Gmail에서 사용하는 포트
+    secure: true, // SSL 사용
     auth: {
-      user: GMAIL_ID,
-      pass: GMAIL_APP_PASSWORD,
+      user: gmail_id,
+      pass: gmail_app_password,
     },
   });
-
   // Set up email data
   let mailOptions = {
     from: fromEmail,
@@ -634,9 +636,10 @@ app.post("/api/send-email", async (req, res) => {
   // Send email
   try {
     let info = await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully: ", info.response); // 성공 메시지 로그
     res.status(200).send("Email sent: " + info.response);
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Error sending email:", error.message); // 상세 에러 메시지 출력
     res.status(500).send("Failed to send email.");
   }
 });
