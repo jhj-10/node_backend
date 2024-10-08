@@ -599,7 +599,7 @@ const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // 지메일 보안 >
 
 // html 파일에서 name, email, password 변경
 function getEmailTemplate(name, email, password) {
-  const filePath = path.join(__dirname, "../src/pages/WelcomeEmail.html");
+  const filePath = path.join(__dirname, "./src/WelcomeEmail.html");
   let emailTemplate = fs.readFileSync(filePath, { encoding: "utf-8" });
 
   // Replace {{name}} and {{email}} in the template with actual data
