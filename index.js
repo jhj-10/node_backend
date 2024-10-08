@@ -594,8 +594,8 @@ app.delete("/api/manpower-status/:projectId", async (req, res) => {
 });
 
 // send email
-const gmail_id = process.env.REACT_APP_GMAIL_ID;
-const gmail_app_password = process.env.REACT_APP_GMAIL_APP_PASSWORD; // 지메일 보안 > 앱 비밀번호 16자리
+const GMAIL_ID = process.env.GMAIL_ID;
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // 지메일 보안 > 앱 비밀번호 16자리
 
 // html 파일에서 name, email, password 변경
 function getEmailTemplate(name, email, password) {
@@ -621,8 +621,8 @@ app.post("/api/send-email", async (req, res) => {
     port: 465, // Gmail에서 사용하는 포트
     secure: true, // SSL 사용
     auth: {
-      user: gmail_id,
-      pass: gmail_app_password,
+      user: GMAIL_ID,
+      pass: GMAIL_APP_PASSWORD,
     },
   });
   // Set up email data
