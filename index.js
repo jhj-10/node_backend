@@ -183,7 +183,7 @@ app.post("/api/user", async (req, res) => {
     ]);
     res.status(200).json({
       success: true,
-      insertId: result.insertId.toString(),
+      // insertId: result.insertId.toString(),
       message: "User created successfully",
     });
   } catch (err) {
