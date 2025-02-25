@@ -5,41 +5,26 @@ const cors = require("cors");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
-const cookieParser = require("cookie-parser");
-
 require("dotenv").config();
 
-const port = process.env.PORT || 5000;
-const SECRET_KEY = process.env.SECRET_KEY || "";
+const port = 3000;
 
 const app = express();
 app.use(bodyParser.json());
 app.use(express.json());
-app.use(cookieParser()); // Needed to parse cookies
-app.use(express.urlencoded({ extended: true })); // URL-encoded 파서 미들웨어
 
 // app.use(cors());
-
-const allowedOrigin = [
-  "https://port-0-node-express-m1u0hx1t4ea25b62.sel4.cloudtype.app",
-  "https://web-schedule-manager-m1u0hx1t4ea25b62.sel4.cloudtype.app",
-  "http://localhost:8080",
-  "http://localhost:5000",
-  "http://localhost:3000",
-  "http://node-express:3000",
-];
+const allowedOrigin =
+  "https://web-schedule-manager-m1u0hx1t4ea25b62.sel4.cloudtype.app";
 
 app.use(
   cors({
-    origin: allowedOrigin, // 허용할 도메인
-    // methods: ["GET", "POST", "PUT", "DELETE"], // 허용할 메서드
-    // preflightContinue: false,
-    // optionsSuccessStatus: 204,
-    credentials: true, // 자격 증명 허용 (필요한 경우)
-    // allowedHeaders: ["Content-Type", "Authorization"], // 허용할 헤더 설정
+    origin: allowedOrigin, // 클라이언트의 도메인을 명시적으로 설정
+    credentials: true, // 자격 증명을 허용
   })
 );
 
+// CORS 프리플라이트 요청 처리
 app.options(
   "*",
   cors({
@@ -48,7 +33,18 @@ app.options(
   })
 );
 
-// 데이터 베이스 연결
+// 프리플라이트 요청의 헤더 처리
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", allowedOrigin);
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  next();
+});
+
 const pool = mariadb.createPool({
   // host: "localhost",
   // port: 3306,
@@ -59,162 +55,28 @@ const pool = mariadb.createPool({
   database: "schedule_manager",
 });
 
-// Hashing the password
-const hashPassword = async (plainPassword) => {
-  try {
-    const hashedPassword = await bcrypt.hash(plainPassword, saltRounds); // Fix: added await
-    // console.log("Hashed Password:", hashedPassword);
-    return hashedPassword;
-  } catch (error) {
-    console.error("Error hashing password:", error);
-  }
-};
-
-// Verifying the password
-const verifyPassword = async (plainPassword, hashedPassword) => {
-  try {
-    const match = await bcrypt.compare(plainPassword, hashedPassword); // Fix: added await
-    if (match) {
-      console.log("Password is valid");
-    } else {
-      console.log("Invalid password");
-    }
-    return match;
-  } catch (error) {
-    console.error("Error verifying password:", error);
-  }
-};
+app.get("/", function (req, res) {
+  res.send("Hello World");
+});
 
 // User login route
 app.post("/api/login", async (req, res) => {
-  console.log("user login!!!"); // This will log every time a login request is made
+  console.log("user login!!!");
   const { email, password } = req.body;
-
   let conn;
-
   try {
     conn = await pool.getConnection();
-    console.log("DB connected");
-
-    // Log email and password for debugging purposes (careful: never log passwords in production)
-    // console.log(`Email: ${email}, Password: ${password}`);
-
     const rows = await conn.query(
-      `SELECT id, name, email, authority 
-      FROM users WHERE email = ? AND password = ?`,
+      "SELECT * FROM users WHERE email = ? AND password = ?",
       [email, password]
     );
-
-    // console.log(`Query result:`, rows);
-
-    // // Validate username and password (mock example)
-    // if (email === "user" && password === "password") {
-    //   const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: "1h" });
-
-    //   // Set token in HTTP-only, Secure cookie
-    //   res.cookie("token", token, {
-    //     httpOnly: true, // Prevent JavaScript from accessing the cookie
-    //     secure: true, // Ensure cookie is only sent over HTTPS (use false in local dev)
-    //     sameSite: "Strict",
-    //     maxAge: 3600000, // 1 hour
-    //   });
-
-    //   res.status(200).json({ message: "Login successful" });
-    // } else {
-    //   res.status(401).json({ message: "Invalid credentials" });
-    // }
-
     if (rows.length > 0) {
-      // Example: set a token cookie
-      res.cookie("token", "valid-token", { httpOnly: true, secure: false });
-      console.log("Login successful");
       res.json({ success: true, user: rows[0] });
     } else {
-      console.log("Invalid credentials");
       res.json({ success: false, message: "Invalid credentials" });
     }
   } catch (err) {
-    console.log("Error during login", err);
     res.status(500).json({ success: false, message: "Server error" });
-  } finally {
-    if (conn) conn.end();
-  }
-});
-
-app.get("/api/protected", (req, res) => {
-  const token = req.cookies.token;
-
-  // console.log("token:", token);
-  if (!token) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  try {
-    const decoded = jwt.verify(token, SECRET_KEY);
-    // console.log("decoded:", decoded);
-    res.status(200).json({ message: `Hello, ${decoded.username}` });
-  } catch (error) {
-    res.status(401).json({ message: "Invalid token" });
-  }
-});
-
-// get password: find matching user
-app.post("/api/password", async (req, res) => {
-  // console.log("req.body:", req.body);
-  const { altumEmail, gmailEmail } = req.body;
-
-  let conn;
-
-  try {
-    conn = await pool.getConnection();
-    console.log("find password");
-
-    const rows = await conn.query(
-      `SELECT name, email, email_sub  FROM users 
-      WHERE email = ? AND email_sub = ?`,
-      [altumEmail, gmailEmail]
-    );
-
-    // console.log(`Query result:`, rows);
-
-    if (rows.length === 1) {
-      res.json({ account: rows, success: true });
-    } else {
-      console.log("No matching account");
-      res.json({ success: false, message: "No matching account" });
-    }
-  } catch (err) {
-    console.log("Error matching account", err);
-    res.status(500).json({ success: false, message: "Server error" });
-  } finally {
-    if (conn) conn.end();
-  }
-});
-
-// 임시비밀번호 발급
-app.put("/api/tempPassword", async (req, res) => {
-  // console.log("/api/tempPassword:", req.body);
-  const { password, email, email_sub } = req.body;
-
-  try {
-    conn = await pool.getConnection();
-    const result = await conn.query(
-      `UPDATE users SET password = ? WHERE email = ? AND email_sub = ?`,
-      [password, email, email_sub]
-    );
-    // console.log("result:", result);
-    if (result.affectedRows > 0) {
-      res
-        .status(200)
-        .json({ success: true, message: "Userinfo updated successfully" });
-    } else {
-      res.status(404).json({ success: false, message: "User not found" });
-    }
-  } catch (err) {
-    console.error("Error updating password:", err.message);
-    res
-      .status(500)
-      .json({ success: false, message: "Error updating password" });
   } finally {
     if (conn) conn.end();
   }
@@ -225,22 +87,23 @@ app.get("/api/users", async (req, res) => {
   const search = req.query.search ? req.query.search.toLowerCase() : "";
   const userId = req.query.userId ? req.query.userId.toLowerCase() : "";
   const auth = req.query.auth ? req.query.auth.toLowerCase() : "";
+  console.log("getusers: ", search, userId);
 
-  // console.log("getusers: ", search, userId);
   let conn;
 
   try {
     conn = await pool.getConnection();
-    let query = "SELECT email FROM users";
+    let query = "";
 
     if (search) {
-      // console.log("search:", search);
-      query = `SELECT id, name, email 
-        FROM users 
-        WHERE (LOWER(name) LIKE '%${search}%' OR LOWER(email) LIKE '%${search}%') AND status <> '퇴사'`;
+      query =
+        "SELECT * FROM users WHERE (LOWER(name) LIKE ? OR LOWER(email) LIKE ?) AND status <> '퇴사'";
     }
     if (userId) {
-      query = `SELECT u.id, u.name, c.color_user_id, c.color_cd
+      query = `SELECT u.id, u.email, u.name, u.phone, u.department,
+                      u.position, u.authority, 
+                      u.email_sub , c.color_user_id, c.color_cd,
+                      u.join_dt, u.quit_dt
                 FROM users u 
                 LEFT JOIN (SELECT * FROM colorset WHERE user_id = ${userId}) c 
                 ON u.id = c.color_user_id
@@ -250,8 +113,12 @@ app.get("/api/users", async (req, res) => {
       query = "SELECT * FROM users";
     }
 
-    // console.log("getusers query:", query);
-    const rows = await conn.query(query);
+    console.log("getusers query:", query);
+    const rows = await conn.query(query, [
+      `%${search}%`,
+      `%${search}%`,
+      { userId },
+    ]);
     res.json(rows);
   } catch (err) {
     console.error("Error fetching users:", err);
@@ -386,7 +253,6 @@ app.get("/api/holidays", async (req, res) => {
     const query = `SELECT hid, type, dt, name, lunar_yn, substitute_yn, substitute
                     FROM holiday`;
     const rows = await conn.query(query);
-    // console.log(rows);
     res.json(rows);
   } catch (err) {
     console.error("Error fetching holidays:", err);
@@ -554,19 +420,19 @@ app.get("/api/attendees", async (req, res) => {
 // Get schedules
 app.get("/api/schedules", async (req, res) => {
   const userId = req.query.userId ? req.query.userId.split(",") : "";
-  // console.log("Get schedules selectedUsers:", req.query.userId);
+  console.log("Get schedules selectedUsers:", req.query.userId);
   let query = !userId
-    ? `SELECT s.type, s.id AS pid, s.title, s.start, s.end
+    ? `SELECT s.id AS pid, s.title, s.start, s.end
             , json_arrayagg(ms.user_id) AS attendees, s.creator_id AS creatorId
         FROM schedule_manager.schedules s 
         INNER JOIN schedule_manager.manpower_status ms 
         ON s.id = ms.project_id 
         GROUP BY s.id`
-    : `SELECT s.type, ms.user_id AS userId, ms.start_dt AS start , ms.end_dt AS end
+    : `SELECT ms.user_id AS userId, ms.start_dt AS start , ms.end_dt AS end
             , s.pid, s.title, s.start AS pStartDt, s.end AS pEndDt, s.attendees, s.creator_id AS creatorId
         FROM schedule_manager.manpower_status ms 
         LEFT JOIN (
-              SELECT s.type, s.id AS pid , s.title, s.start, s.end
+              SELECT s.id AS pid , s.title, s.start, s.end
                     , json_arrayagg(ms.user_id) AS attendees, s.creator_id
                 FROM schedule_manager.schedules s 
                 LEFT JOIN schedule_manager.manpower_status ms 
@@ -580,7 +446,7 @@ app.get("/api/schedules", async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
-    // console.log("get schecule query:", query);
+    console.log("get schecule query:", query);
     const rows = await conn.query(query);
     res.json(rows);
   } catch (err) {
@@ -619,13 +485,13 @@ app.delete("/api/schedules/:id", async (req, res) => {
 
 // Create schedule
 app.post("/api/schedules", async (req, res) => {
-  const { type, title, start, end, notes, creator_id } = req.body;
+  const { title, start, end, notes, creator_id } = req.body;
   let conn;
   try {
     conn = await pool.getConnection();
     const result = await conn.query(
-      "INSERT INTO schedules (type, title, start, end, notes, creator_id) VALUES (?, ?, ?, ?, ?, ?)",
-      [type, title, start, end, notes, creator_id]
+      "INSERT INTO schedules (title, start, end, notes, creator_id) VALUES (?, ?, ?, ?, ?)",
+      [title, start, end, notes, creator_id]
     );
     res.status(200).json({
       success: true,
@@ -643,13 +509,13 @@ app.post("/api/schedules", async (req, res) => {
 // Update schedule
 app.put("/api/schedules/:id", async (req, res) => {
   const { id } = req.params;
-  const { type, title, start, end, notes } = req.body;
+  const { title, start, end, notes } = req.body;
   let conn;
   try {
     conn = await pool.getConnection();
     const result = await conn.query(
-      "UPDATE schedules SET type = ?, title = ?, start = ?, end = ?, notes = ? WHERE id = ?",
-      [type, title, start, end, notes, id]
+      "UPDATE schedules SET title = ?, start = ?, end = ?, notes = ? WHERE id = ?",
+      [title, start, end, notes, id]
     );
     if (result.affectedRows > 0) {
       res
@@ -670,7 +536,7 @@ app.put("/api/schedules/:id", async (req, res) => {
 
 // Create manpower-status
 app.post("/api/manpower-status", async (req, res) => {
-  // console.log("Create manpower-status req.body: ", req.body);
+  console.log("Create manpower-status req.body: ", req.body);
   const { project_id, attendees } = req.body;
   let conn;
   try {
@@ -728,13 +594,12 @@ app.delete("/api/manpower-status/:projectId", async (req, res) => {
 });
 
 // send email
-const gmail_id = process.env.GMAIL_ID;
-const gmail_app_password = process.env.GMAIL_APP_PASSWORD; // 지메일 보안 > 앱 비밀번호 16자리
+const GMAIL_ID = process.env.GMAIL_ID;
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD; // 지메일 보안 > 앱 비밀번호 16자리
 
 // html 파일에서 name, email, password 변경
-function getEmailTemplate(file, name, email, password) {
-  const filePath = path.join(__dirname, `../src/html/${file}.html`);
-  // const filePath = path.join(__dirname, `../src/pages/WelcomeEmail.html`);
+function getEmailTemplate(name, email, password) {
+  const filePath = path.join(__dirname, "./src/WelcomeEmail.html");
   let emailTemplate = fs.readFileSync(filePath, { encoding: "utf-8" });
 
   // Replace {{name}} and {{email}} in the template with actual data
@@ -747,8 +612,8 @@ function getEmailTemplate(file, name, email, password) {
 }
 
 app.post("/api/send-email", async (req, res) => {
-  // console.log("send email!!!");
-  const { file, toEmail, subject, fromEmail, name, email, password } = req.body;
+  console.log("send email!!!");
+  const { toEmail, subject, fromEmail, name, email, password } = req.body;
 
   // Configure your SMTP transport
   let transporter = nodemailer.createTransport({
@@ -756,30 +621,22 @@ app.post("/api/send-email", async (req, res) => {
     port: 465, // Gmail에서 사용하는 포트
     secure: true, // SSL 사용
     auth: {
-      user: gmail_id,
-      pass: gmail_app_password,
+      user: GMAIL_ID,
+      pass: GMAIL_APP_PASSWORD,
     },
   });
-  // let transporter = nodemailer.createTransport({
-  //   service: "gmail",
-  //   auth: {
-  //     user: GMAIL_ID,
-  //     pass: GMAIL_APP_PASSWORD,
-  //   },
-  // });
-
   // Set up email data
   let mailOptions = {
     from: fromEmail,
     to: toEmail,
     subject: subject,
-    html: getEmailTemplate(file, name, email, password),
+    html: getEmailTemplate(name, email, password),
   };
 
   // Send email
   try {
     let info = await transporter.sendMail(mailOptions);
-    // console.log("Email sent successfully: ", info.response); // 성공 메시지 로그
+    console.log("Email sent successfully: ", info.response); // 성공 메시지 로그
     res.status(200).send("Email sent: " + info.response);
   } catch (error) {
     console.error("Error sending email:", error.message); // 상세 에러 메시지 출력
@@ -787,14 +644,7 @@ app.post("/api/send-email", async (req, res) => {
   }
 });
 
-// logout
-app.post("/api/logout", (req, res) => {
-  // Clear the session or authentication token here
-  res.clearCookie("token"); // Example of clearing a secure cookie
-  return res.status(200).json({ message: "Logged out successfully" });
-});
-
 // Start the server
 app.listen(port, () => {
-  // console.log("Server is running on port 5000");
+  console.log("Server is running on port 5000");
 });
