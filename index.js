@@ -25,15 +25,12 @@ const allowedOrigin = [
 
 app.use(
   cors({
-    origin: allowedOrigin, // 허용할 도메인
-    // methods: ["GET", "POST", "PUT", "DELETE"], // 허용할 메서드
-    // preflightContinue: false,
-    // optionsSuccessStatus: 204,
-    credentials: true, // 자격 증명 허용 (필요한 경우)
-    // allowedHeaders: ["Content-Type", "Authorization"], // 허용할 헤더 설정
+    origin: allowedOrigin, // 클라이언트의 도메인을 명시적으로 설정
+    credentials: true, // 자격 증명을 허용
   })
 );
 
+// CORS 프리플라이트 요청 처리
 app.options(
   "*",
   cors({
