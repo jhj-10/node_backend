@@ -9,8 +9,7 @@ const cookieParser = require("cookie-parser");
 
 require("dotenv").config();
 
-const port = process.env.PORT || 5000;
-const SECRET_KEY = process.env.SECRET_KEY || "";
+const port = 3000;
 
 const app = express();
 app.use(bodyParser.json());
@@ -21,12 +20,7 @@ app.use(express.urlencoded({ extended: true })); // URL-encoded 파서 미들웨
 // app.use(cors());
 
 const allowedOrigin = [
-  "https://port-0-node-express-m1u0hx1t4ea25b62.sel4.cloudtype.app",
   "https://web-schedule-manager-m1u0hx1t4ea25b62.sel4.cloudtype.app",
-  "http://localhost:8080",
-  "http://localhost:5000",
-  "http://localhost:3000",
-  "http://node-express:3000",
 ];
 
 app.use(
@@ -47,6 +41,18 @@ app.options(
     credentials: true,
   })
 );
+
+// 프리플라이트 요청의 헤더 처리
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", allowedOrigin);
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  next();
+});
 
 // 데이터 베이스 연결
 const pool = mariadb.createPool({
