@@ -58,11 +58,16 @@ app.use((req, res, next) => {
 const pool = mariadb.createPool({
   // host: "localhost",
   // port: 3306,
-  host: "svc.sel4.cloudtype.app",
-  port: 31849,
-  user: "root",
-  password: "1234",
-  database: "schedule_manager",
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+  // host: "svc.sel4.cloudtype.app",
+  // port: 31849,
+  // user: "root",
+  // password: "1234",
+  // database: "schedule_manager",
 });
 
 // API 키 검증 미들웨어
