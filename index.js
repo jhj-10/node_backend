@@ -11,6 +11,9 @@ require("dotenv").config();
 
 const port = 3000;
 
+const SECRET_KEY = process.env.REACT_APP_SECRET_KEY || "";
+const API_KEY = process.env.REACT_APP_API_KEY || "";
+
 const app = express();
 app.use(bodyParser.json());
 app.use(express.json());
@@ -60,6 +63,26 @@ const pool = mariadb.createPool({
   user: "root",
   password: "1234",
   database: "schedule_manager",
+});
+
+// API 키 검증 미들웨어
+app.use((req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  // API 키가 존재하는지 확인
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized: No API Key" });
+  }
+
+  // 클라이언트에서 보낸 API 키 추출
+  const clientApiKey = authHeader.split(" ")[1];
+
+  // API 키 검증
+  if (clientApiKey !== API_KEY) {
+    return res.status(403).json({ message: "Forbidden: Invalid API Key" });
+  }
+
+  next(); // API 키가 올바르면 다음 미들웨어 or 라우트 핸들러로 진행
 });
 
 // Hashing the password
